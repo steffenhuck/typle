@@ -35,22 +35,30 @@
   }
   .wrap{width:100%;max-width:360px;display:flex;flex-direction:column;align-items:center;}
 
-  header{text-align:center;margin:12px 0 2px;}
-  h1{font-weight:700;font-size:26px;letter-spacing:.14em;margin:0;text-transform:lowercase;}
-  .sub{color:var(--muted);font-size:10px;letter-spacing:.22em;text-transform:uppercase;margin-top:5px;}
+  header{text-align:center;margin:18px 0 4px;}
+  h1{font-weight:700;font-size:34px;letter-spacing:.14em;margin:0;text-transform:lowercase;}
+  .sub{color:var(--muted);font-size:12px;letter-spacing:.22em;text-transform:uppercase;margin-top:7px;}
 
   /* thermometer legend */
-  .legend{display:flex;gap:5px;align-items:center;margin:10px 0 2px;font-size:10px;color:var(--muted);letter-spacing:.04em;}
+  .legend{display:flex;gap:7px;align-items:center;margin:12px 0 2px;font-size:11px;color:var(--muted);letter-spacing:.04em;}
   .legend .sw{display:flex;align-items:center;gap:4px;}
   .legend i{width:11px;height:11px;border-radius:3px;display:inline-block;}
 
   /* GRID */
   .grid{display:flex;flex-direction:column;gap:6px;margin:12px 0 4px;}
-  .row{display:flex;gap:6px;}
+  .row{display:flex;gap:6px;align-items:center;}
   .tile{width:54px;height:54px;border-radius:10px;display:flex;align-items:center;justify-content:center;
     font-size:26px;font-weight:600;text-transform:uppercase;
-    background:var(--tile-empty);border:2px solid var(--tile-edge);color:var(--ink);transition:transform .1s;}
+    background:var(--tile-empty);border:2px solid var(--tile-edge);color:var(--ink);transition:transform .1s,border-color .12s;}
   .tile.filled{border-color:var(--muted);}
+  .tile.sel{border-color:var(--ink);border-width:2.5px;box-shadow:0 0 0 3px rgba(34,39,44,.1);}
+  .tile.locked{box-shadow:0 0 0 2px rgba(79,157,108,.3);}
+  .guessbtn{margin-left:4px;height:54px;padding:0 14px;border-radius:10px;border:none;
+    background:var(--tile-empty);color:var(--muted);font-family:var(--type);font-size:13px;font-weight:600;
+    letter-spacing:.04em;cursor:pointer;transition:.12s;visibility:hidden;}
+  .row.activerow .guessbtn{visibility:visible;}
+  .guessbtn.ready{background:var(--ink);color:var(--bg);}
+  .guessbtn:disabled{cursor:default;}
   .tile.cold{background:var(--cold);border-color:var(--cold);color:#fff;}
   .tile.warm{background:var(--warm);border-color:var(--warm);color:#3a2f15;}
   .tile.hot{background:var(--hot);border-color:var(--hot);color:#fff;}
@@ -88,6 +96,13 @@
   .card p{color:var(--muted);font-size:13px;margin:6px 0 18px;}
   .card button{background:var(--ink);color:var(--bg);border:none;border-radius:10px;padding:13px 30px;
     font-family:var(--type);font-size:14px;font-weight:600;cursor:pointer;letter-spacing:.04em;min-width:170px;}
+  .card button.look{background:transparent;color:var(--muted);margin-top:10px;font-weight:500;
+    border:1px solid var(--line);}
+  .floatnew{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom));
+    background:var(--ink);color:var(--bg);border:none;border-radius:999px;padding:12px 26px;
+    font-family:var(--type);font-size:14px;font-weight:600;letter-spacing:.04em;cursor:pointer;
+    box-shadow:0 6px 20px rgba(0,0,0,.25);z-index:30;display:none;}
+  .floatnew.show{display:block;}
 
   /* WELCOME */
   .welcome{position:fixed;inset:0;background:var(--bg);z-index:60;overflow-y:auto;
@@ -125,7 +140,7 @@
     <div class="prose">
       <p>A hidden string of <span class="k">three letters</span> is waiting. Guess any three letters, and each one lights up to show how close it is to belonging in that spot.</p>
       <p>Closeness counts two things together: how far your letter is from the right one <span class="k">in the alphabet</span>, and how many <span class="k">spots</span> it sits from where that letter belongs. The two add up into a single distance.</p>
-      <p class="band"><span class="c-exact">Green</span> — <strong>on target!</strong> The right letter, in the right spot.</p>
+      <p class="band"><span class="c-exact">Green</span> — <strong>on target!</strong> The right letter, in the right spot. It locks and is set aside, so closeness is then measured only against the letters still hidden.</p>
       <p class="band"><span class="c-hot">Red</span> — <strong>hot!</strong> The distance is 1 or 2. That could mean it's the right letter but a spot or two away, or it's a wrong letter either at the right spot or adjacent.</p>
       <p class="band"><span class="c-warm">Yellow</span> — <strong>warm!</strong> The distance is between 3 and 5. This implies it's not a letter that features. But it is close, and must be a letter close in the alphabet on or near the right spot.</p>
       <p class="band"><span class="c-cold">Blue</span> — <strong>cold!</strong> The distance is 6 or more: far from every hidden letter, on both counts.</p>
@@ -161,77 +176,120 @@
     <div class="answer" id="endAns">———</div>
     <p id="endText"></p>
     <button id="endNext">new string</button>
+    <button id="endLook" class="look">look at the board</button>
   </div>
 </div>
+<button class="floatnew" id="floatNew">new string</button>
 
 <script>
 const A='abcdefghijklmnopqrstuvwxyz';
 const _ix=c=>c.charCodeAt(0)-97;
-// additive 2-D distance: for your letter at position i, the smallest over all answer positions j of
-//   (alphabet gap to the answer's letter at j) + (spots between i and j).
-// band: 3=exact(green) d=0, 2=hot(red) d 1-2, 1=warm(yellow) d 3-5, 0=cold(blue) d>=6
-function band(secret,guess,i){
+// amended additive 2-D distance: minimize ONLY over positions not yet locked (solved green).
+// Once a position is green it locks and is removed as a target, so warmth never echoes a found letter.
+function band(secret,guess,i,locked){
   let d=Infinity;
-  for(let j=0;j<3;j++){ d=Math.min(d, Math.abs(_ix(guess[i])-_ix(secret[j])) + Math.abs(i-j)); }
+  for(let j=0;j<3;j++){ if(locked.has(j))continue; const v=Math.abs(_ix(guess[i])-_ix(secret[j]))+Math.abs(i-j); if(v<d)d=v; }
+  if(d===Infinity)return 3;
   return d===0?3 : d<=2?2 : d<=5?1 : 0;
 }
 const BANDCLASS=['cold','warm','hot','exact'];
 
-let secret, row, col, guesses, over;
+let secret, row, over, locked, lockedLetters, active, draft;
 function newGame(){
   secret = A[Math.random()*26|0]+A[Math.random()*26|0]+A[Math.random()*26|0];
-  row=0; col=0; guesses=[['','',''],['','',''],['','',''],['','',''],['','',''],['','',''],['','','']]; over=false;
+  row=0; over=false; locked=new Set(); lockedLetters=['','',''];
+  draft=['','','']; active=-1;
   buildGrid(); setMsg('');
   document.getElementById('sheet').classList.remove('show');
+  refreshActiveRow();
 }
 function buildGrid(){
   const g=document.getElementById('grid'); g.innerHTML='';
   for(let r=0;r<7;r++){
-    const rowEl=document.createElement('div'); rowEl.className='row';
+    const rowEl=document.createElement('div'); rowEl.className='row'; rowEl.id='row'+r;
     for(let c=0;c<3;c++){
       const t=document.createElement('div'); t.className='tile'; t.id='t'+r+c;
+      onTap(t,()=>selectSpot(r,c));
       rowEl.appendChild(t);
     }
+    // guess button slot (only the active row shows it live)
+    const gb=document.createElement('button'); gb.className='guessbtn'; gb.id='gb'+r; gb.textContent='guess';
+    onTap(gb,()=>{ if(r===row) submit(); });
+    rowEl.appendChild(gb);
     g.appendChild(rowEl);
   }
 }
 function setMsg(m){document.getElementById('msg').textContent=m;}
 
+function firstOpen(){ for(let c=0;c<3;c++) if(!locked.has(c)) return c; return -1; }
+function nextOpen(from){ for(let k=1;k<=3;k++){ const c=(from+k)%3; if(!locked.has(c)) return c; } return from; }
+
+function selectSpot(r,c){
+  if(over||r!==row||locked.has(c))return;
+  active=c; refreshActiveRow();
+}
+function refreshActiveRow(){
+  // mark which row is active (so only its guess button shows)
+  for(let r=0;r<7;r++){ document.getElementById('row'+r).classList.toggle('activerow', r===row && !over); }
+  // render locked letters + draft into the active row; mark active spot; set button state
+  for(let c=0;c<3;c++){
+    const t=document.getElementById('t'+row+c);
+    t.className='tile';
+    if(locked.has(c)){ t.textContent=lockedLetters[c]; t.classList.add('exact','locked'); }
+    else { t.textContent=draft[c]||''; if(draft[c])t.classList.add('filled'); if(c===active)t.classList.add('sel'); }
+  }
+  // guess button active only when all open spots are filled
+  const complete = [0,1,2].every(c=>locked.has(c)||draft[c]);
+  const gb=document.getElementById('gb'+row);
+  gb.classList.toggle('ready',complete);
+  gb.disabled=!complete;
+}
 function pressLetter(ch){
-  if(over||col>2)return;
-  guesses[row][col]=ch;
-  const t=document.getElementById('t'+row+col);
-  t.textContent=ch; t.classList.add('filled','pop');
-  setTimeout(()=>t.classList.remove('pop'),120);
-  col++;
+  if(over)return;
+  if(active<0||locked.has(active)) active=firstOpen();
+  if(active<0)return;
+  draft[active]=ch;
+  // advance to the next still-EMPTY open spot; if none, deselect (row complete)
+  let nxt=-1;
+  for(let k=1;k<=3;k++){ const c=(active+k)%3; if(!locked.has(c)&&!draft[c]){ nxt=c; break; } }
+  active=nxt;
+  refreshActiveRow();
 }
 function backspace(){
-  if(over||col===0)return;
-  col--;
-  guesses[row][col]='';
-  const t=document.getElementById('t'+row+col);
-  t.textContent=''; t.classList.remove('filled');
+  if(over)return;
+  // clear the active spot, or step back to previous open spot and clear it
+  if(!locked.has(active)&&draft[active]){ draft[active]=''; }
+  else { // move to previous open and clear
+    for(let k=1;k<=3;k++){ const c=((active-k)%3+3)%3; if(!locked.has(c)){ active=c; draft[c]=''; break; } }
+  }
+  refreshActiveRow();
 }
 function submit(){
   if(over)return;
-  if(col<3){ setMsg('three letters needed'); return; }
-  const guess=guesses[row].join('');
-  // reveal bands
+  const complete=[0,1,2].every(c=>locked.has(c)||draft[c]);
+  if(!complete){ setMsg('fill the open spots'); return; }
+  // assemble full guess (locked letters + draft)
+  const guess=[0,1,2].map(c=>locked.has(c)?lockedLetters[c]:draft[c]).join('');
+  // freeze this row's tiles to the guessed letters, reveal bands
   for(let c=0;c<3;c++){
-    const b=band(secret,guess,c);
     const t=document.getElementById('t'+row+c);
-    setTimeout(()=>{
-      t.classList.add('reveal');
-      setTimeout(()=>{ t.classList.add(BANDCLASS[b]); },250);
-    }, c*180);
+    t.className='tile filled'; t.textContent=guess[c];
   }
-  const solved = guess===secret;
+  const gb=document.getElementById('gb'+row); gb.classList.remove('ready'); gb.disabled=true; gb.style.visibility='hidden';
+  const bands=[0,1,2].map(c=>locked.has(c)?3:band(secret,guess,c,locked));
+  for(let c=0;c<3;c++){
+    const t=document.getElementById('t'+row+c);
+    setTimeout(()=>{ t.classList.add('reveal'); setTimeout(()=>{ t.classList.add(BANDCLASS[bands[c]]); if(bands[c]===3)t.classList.add('locked'); },250); }, c*180);
+  }
+  // lock any genuine new greens
+  for(let c=0;c<3;c++){ if(!locked.has(c)&&bands[c]===3&&guess[c]===secret[c]){ locked.add(c); lockedLetters[c]=guess[c]; } }
+  const solved = locked.size===3;
   const last = row===6;
   setTimeout(()=>{
     if(solved){ endGame(true); }
     else if(last){ endGame(false); }
-    else { row++; col=0; setMsg(''); }
-  }, 3*180+400);
+    else { row++; draft=['','','']; active=-1; setMsg(''); refreshActiveRow(); }
+  }, 3*180+450);
 }
 function endGame(win){
   over=true;
@@ -250,10 +308,6 @@ const rows=['qwertyuiop','asdfghjkl','zxcvbnm'];
 const kb=document.getElementById('kb');
 rows.forEach((r,idx)=>{
   const rowEl=document.createElement('div'); rowEl.className='kb-row';
-  if(idx===2){
-    const ent=document.createElement('button'); ent.className='key wide enter'; ent.textContent='enter';
-    onTap(ent,submit); rowEl.appendChild(ent);
-  }
   for(const ch of r){
     const k=document.createElement('button'); k.className='key'; k.textContent=ch;
     onTap(k,()=>pressLetter(ch)); rowEl.appendChild(k);
@@ -281,7 +335,12 @@ function onTap(el,fn){let h=false;const run=e=>{if(h)return;h=true;setTimeout(()
   sample.forEach(([ch,cls])=>{const t=document.createElement('div');t.className='tile '+cls;t.textContent=ch;demo.appendChild(t);});
 })();
 onTap(document.getElementById('wPlay'),()=>document.getElementById('welcome').classList.add('hidden'));
-onTap(document.getElementById('endNext'),newGame);
+onTap(document.getElementById('endNext'),()=>{ document.getElementById('floatNew').classList.remove('show'); newGame(); });
+onTap(document.getElementById('endLook'),()=>{
+  document.getElementById('sheet').classList.remove('show');
+  document.getElementById('floatNew').classList.add('show');
+});
+onTap(document.getElementById('floatNew'),()=>{ document.getElementById('floatNew').classList.remove('show'); newGame(); });
 
 newGame();
 </script>
