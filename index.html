@@ -100,6 +100,7 @@
   .w-demo .tile{width:52px;height:52px;font-size:24px;border-radius:10px;}
   .prose{color:var(--ink);font-size:15px;line-height:1.6;}
   .prose p{margin:0 0 13px;}
+  .prose p.band{margin:0 0 8px;}
   .prose .k{font-weight:600;}
   .prose .c-cold{color:var(--cold);font-weight:600;}
   .prose .c-warm{color:#b88a1a;font-weight:600;}
@@ -124,10 +125,10 @@
     <div class="prose">
       <p>A hidden string of <span class="k">three letters</span> is waiting. Guess any three letters, and each one lights up to show how close it is to belonging in that spot.</p>
       <p>Closeness counts two things together: how far your letter is from the right one <span class="k">in the alphabet</span>, and how many <span class="k">spots</span> it sits from where that letter belongs. The two add up into a single distance.</p>
-      <p><span class="c-exact">Green</span> — exactly right: the right letter in the right spot.<br>
-      <span class="c-hot">Red</span> — very close.<br>
-      <span class="c-warm">Yellow</span> — getting there.<br>
-      <span class="c-cold">Blue</span> — far off.</p>
+      <p class="band"><span class="c-exact">Green</span> — <strong>on target!</strong> The right letter, in the right spot.</p>
+      <p class="band"><span class="c-hot">Red</span> — <strong>hot!</strong> The distance is 1 or 2. That could mean it's the right letter but a spot or two away, or it's a wrong letter either at the right spot or adjacent.</p>
+      <p class="band"><span class="c-warm">Yellow</span> — <strong>warm!</strong> The distance is between 3 and 5. This implies it's not a letter that features. But it is close, and must be a letter close in the alphabet on or near the right spot.</p>
+      <p class="band"><span class="c-cold">Blue</span> — <strong>cold!</strong> The distance is 6 or more: far from every hidden letter, on both counts.</p>
       <p>Seven guesses. Any three letters can be the answer — words or not.</p>
     </div>
     <button class="w-play" id="wPlay">let's play</button>
