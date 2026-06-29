@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="color-scheme" content="light only">
+<title>Typle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script data-goatcounter="https://steffenhuck.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+<style>
+  :root{
+    color-scheme:light;
+    --bg:#f0f2f4;
+    --ink:#22272c;
+    --muted:#828c95;
+    --line:#cdd3d8;
+    --tile-empty:#e4e8eb;
+    --tile-edge:#cfd5da;
+    --cold:#3f7fc4;       /* blue — far */
+    --warm:#e3b431;       /* yellow — a little further / two spots */
+    --hot:#d6463a;        /* red — very close / adjacent spot */
+    --exact:#4f9d6c;      /* green — nailed it */
+    --type:'Space Grotesk',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;background:var(--bg);}
+  body{
+    background:var(--bg);color:var(--ink);font-family:var(--type);
+    display:flex;flex-direction:column;align-items:center;
+    min-height:100vh;min-height:100dvh;
+    padding:env(safe-area-inset-top) 14px env(safe-area-inset-bottom);
+    user-select:none;-webkit-user-select:none;overflow-x:hidden;
+  }
+  .wrap{width:100%;max-width:360px;display:flex;flex-direction:column;align-items:center;}
+
+  header{text-align:center;margin:12px 0 2px;}
+  h1{font-weight:700;font-size:26px;letter-spacing:.14em;margin:0;text-transform:lowercase;}
+  .sub{color:var(--muted);font-size:10px;letter-spacing:.22em;text-transform:uppercase;margin-top:5px;}
+
+  /* thermometer legend */
+  .legend{display:flex;gap:5px;align-items:center;margin:10px 0 2px;font-size:10px;color:var(--muted);letter-spacing:.04em;}
+  .legend .sw{display:flex;align-items:center;gap:4px;}
+  .legend i{width:11px;height:11px;border-radius:3px;display:inline-block;}
+
+  /* GRID */
+  .grid{display:flex;flex-direction:column;gap:6px;margin:12px 0 4px;}
+  .row{display:flex;gap:6px;}
+  .tile{width:54px;height:54px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+    font-size:26px;font-weight:600;text-transform:uppercase;
+    background:var(--tile-empty);border:2px solid var(--tile-edge);color:var(--ink);transition:transform .1s;}
+  .tile.filled{border-color:var(--muted);}
+  .tile.cold{background:var(--cold);border-color:var(--cold);color:#fff;}
+  .tile.warm{background:var(--warm);border-color:var(--warm);color:#3a2f15;}
+  .tile.hot{background:var(--hot);border-color:var(--hot);color:#fff;}
+  .tile.exact{background:var(--exact);border-color:var(--exact);color:#fff;
+    box-shadow:0 0 0 2px rgba(79,157,108,.28);}
+  .tile.reveal{animation:flip .5s ease;}
+  @keyframes flip{0%{transform:rotateX(0)}50%{transform:rotateX(90deg)}100%{transform:rotateX(0)}}
+  .tile.pop{animation:pp .12s ease;}
+  @keyframes pp{50%{transform:scale(1.07)}}
+
+  /* KEYBOARD */
+  .kb{display:flex;flex-direction:column;gap:6px;margin-top:8px;width:100%;}
+  .kb-row{display:flex;gap:5px;justify-content:center;}
+  .key{flex:1;max-width:34px;height:46px;border-radius:7px;border:none;background:#d7dce0;color:var(--ink);
+    font-family:var(--type);font-size:14px;font-weight:600;text-transform:uppercase;cursor:pointer;transition:.08s;
+    display:flex;align-items:center;justify-content:center;}
+  .key:active{background:var(--hot);color:#fff;transform:translateY(1px);}
+  .key.wide{max-width:52px;font-size:10px;letter-spacing:.04em;}
+  .key.enter{background:var(--ink);color:var(--bg);}
+  .key.enter:active{background:#3a434b;}
+
+  /* MESSAGE */
+  .msg{height:18px;margin:7px 0 2px;font-size:12.5px;color:var(--muted);letter-spacing:.02em;text-align:center;}
+
+  /* END SHEET */
+  .sheet{position:fixed;inset:0;background:rgba(34,39,44,.6);backdrop-filter:blur(3px);
+    display:none;align-items:center;justify-content:center;z-index:40;padding:26px;}
+  .sheet.show{display:flex;animation:fade .3s ease;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .card{background:var(--bg);border-radius:18px;padding:26px 24px;max-width:320px;width:100%;
+    box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center;}
+  .card h2{font-weight:700;font-size:24px;margin:0 0 6px;letter-spacing:.02em;}
+  .card h2.win{color:var(--exact);} .card h2.lose{color:var(--cold);}
+  .card .answer{font-size:40px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;margin:10px 0;color:var(--ink);}
+  .card p{color:var(--muted);font-size:13px;margin:6px 0 18px;}
+  .card button{background:var(--ink);color:var(--bg);border:none;border-radius:10px;padding:13px 30px;
+    font-family:var(--type);font-size:14px;font-weight:600;cursor:pointer;letter-spacing:.04em;min-width:170px;}
+
+  /* WELCOME */
+  .welcome{position:fixed;inset:0;background:var(--bg);z-index:60;overflow-y:auto;
+    display:flex;flex-direction:column;align-items:center;padding:0 24px env(safe-area-inset-bottom);}
+  .welcome.hidden{display:none;}
+  .welcome-inner{width:100%;max-width:380px;padding:44px 0 30px;}
+  .welcome h1{font-size:40px;text-align:center;margin:0 0 6px;}
+  .welcome .tagline{text-align:center;color:var(--muted);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;margin-bottom:26px;}
+  .w-demo{display:flex;gap:7px;justify-content:center;margin:20px 0 26px;}
+  .w-demo .tile{width:52px;height:52px;font-size:24px;border-radius:10px;}
+  .prose{color:var(--ink);font-size:15px;line-height:1.6;}
+  .prose p{margin:0 0 13px;}
+  .prose .k{font-weight:600;}
+  .prose .c-cold{color:var(--cold);font-weight:600;}
+  .prose .c-warm{color:#b88a1a;font-weight:600;}
+  .prose .c-hot{color:var(--hot);font-weight:600;}
+  .prose .c-exact{color:var(--exact);font-weight:600;}
+  .w-play{display:block;width:100%;margin:24px 0 12px;background:var(--ink);color:var(--bg);
+    border:none;border-radius:11px;padding:15px;font-family:var(--type);font-size:15px;font-weight:600;
+    letter-spacing:.06em;cursor:pointer;text-transform:lowercase;}
+  .w-play:active{background:#3a434b;}
+  .w-dedication{text-align:center;color:var(--muted);font-size:12.5px;margin-top:8px;}
+  .w-signature{display:block;text-align:center;color:var(--ink);font-size:13px;letter-spacing:.4em;
+    text-transform:lowercase;text-decoration:none;margin:14px 0 6px;padding-right:.4em;}
+  .w-signature:active{color:var(--hot);}
+</style>
+</head>
+<body>
+<div class="welcome" id="welcome">
+  <div class="welcome-inner">
+    <h1>typle</h1>
+    <div class="tagline">three letters · seven guesses</div>
+    <div class="w-demo" id="wDemo"></div>
+    <div class="prose">
+      <p>A hidden string of <span class="k">three letters</span> is waiting. Guess any three letters, and each one lights up to show how close it is to belonging in that spot.</p>
+      <p>Closeness counts two things together: how far your letter is from the right one <span class="k">in the alphabet</span>, and how many <span class="k">spots</span> it sits from where that letter belongs. The two add up into a single distance.</p>
+      <p><span class="c-exact">Green</span> — exactly right: the right letter in the right spot.<br>
+      <span class="c-hot">Red</span> — very close.<br>
+      <span class="c-warm">Yellow</span> — getting there.<br>
+      <span class="c-cold">Blue</span> — far off.</p>
+      <p>Seven guesses. Any three letters can be the answer — words or not.</p>
+    </div>
+    <button class="w-play" id="wPlay">let's play</button>
+    <div class="w-dedication">a small machine for triangulation</div>
+    <a class="w-signature" href="https://steffenhuck.github.io" target="_blank" rel="noopener">steffen huck</a>
+  </div>
+</div>
+
+<div class="wrap">
+  <header>
+    <h1>typle</h1>
+    <div class="sub">find the three letters</div>
+  </header>
+
+  <div class="legend">
+    <span class="sw"><i style="background:var(--cold)"></i>cold</span>
+    <span class="sw"><i style="background:var(--warm)"></i>warm</span>
+    <span class="sw"><i style="background:var(--hot)"></i>hot</span>
+    <span class="sw"><i style="background:var(--exact)"></i>exact</span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <div class="msg" id="msg"></div>
+  <div class="kb" id="kb"></div>
+</div>
+
+<div class="sheet" id="sheet">
+  <div class="card">
+    <h2 id="endHead">Solved.</h2>
+    <div class="answer" id="endAns">———</div>
+    <p id="endText"></p>
+    <button id="endNext">new string</button>
+  </div>
+</div>
+
+<script>
+const A='abcdefghijklmnopqrstuvwxyz';
+const _ix=c=>c.charCodeAt(0)-97;
+// additive 2-D distance: for your letter at position i, the smallest over all answer positions j of
+//   (alphabet gap to the answer's letter at j) + (spots between i and j).
+// band: 3=exact(green) d=0, 2=hot(red) d 1-2, 1=warm(yellow) d 3-5, 0=cold(blue) d>=6
+function band(secret,guess,i){
+  let d=Infinity;
+  for(let j=0;j<3;j++){ d=Math.min(d, Math.abs(_ix(guess[i])-_ix(secret[j])) + Math.abs(i-j)); }
+  return d===0?3 : d<=2?2 : d<=5?1 : 0;
+}
+const BANDCLASS=['cold','warm','hot','exact'];
+
+let secret, row, col, guesses, over;
+function newGame(){
+  secret = A[Math.random()*26|0]+A[Math.random()*26|0]+A[Math.random()*26|0];
+  row=0; col=0; guesses=[['','',''],['','',''],['','',''],['','',''],['','',''],['','',''],['','','']]; over=false;
+  buildGrid(); setMsg('');
+  document.getElementById('sheet').classList.remove('show');
+}
+function buildGrid(){
+  const g=document.getElementById('grid'); g.innerHTML='';
+  for(let r=0;r<7;r++){
+    const rowEl=document.createElement('div'); rowEl.className='row';
+    for(let c=0;c<3;c++){
+      const t=document.createElement('div'); t.className='tile'; t.id='t'+r+c;
+      rowEl.appendChild(t);
+    }
+    g.appendChild(rowEl);
+  }
+}
+function setMsg(m){document.getElementById('msg').textContent=m;}
+
+function pressLetter(ch){
+  if(over||col>2)return;
+  guesses[row][col]=ch;
+  const t=document.getElementById('t'+row+col);
+  t.textContent=ch; t.classList.add('filled','pop');
+  setTimeout(()=>t.classList.remove('pop'),120);
+  col++;
+}
+function backspace(){
+  if(over||col===0)return;
+  col--;
+  guesses[row][col]='';
+  const t=document.getElementById('t'+row+col);
+  t.textContent=''; t.classList.remove('filled');
+}
+function submit(){
+  if(over)return;
+  if(col<3){ setMsg('three letters needed'); return; }
+  const guess=guesses[row].join('');
+  // reveal bands
+  for(let c=0;c<3;c++){
+    const b=band(secret,guess,c);
+    const t=document.getElementById('t'+row+c);
+    setTimeout(()=>{
+      t.classList.add('reveal');
+      setTimeout(()=>{ t.classList.add(BANDCLASS[b]); },250);
+    }, c*180);
+  }
+  const solved = guess===secret;
+  const last = row===6;
+  setTimeout(()=>{
+    if(solved){ endGame(true); }
+    else if(last){ endGame(false); }
+    else { row++; col=0; setMsg(''); }
+  }, 3*180+400);
+}
+function endGame(win){
+  over=true;
+  const sheet=document.getElementById('sheet');
+  document.getElementById('endHead').textContent = win?'Solved.':'Out of guesses.';
+  document.getElementById('endHead').className = win?'win':'lose';
+  document.getElementById('endAns').textContent = secret;
+  document.getElementById('endText').textContent = win
+    ? 'You found it in '+(row+1)+(row+1===1?' guess.':' guesses.')
+    : 'The string was hiding here.';
+  setTimeout(()=>sheet.classList.add('show'),350);
+}
+
+// keyboard
+const rows=['qwertyuiop','asdfghjkl','zxcvbnm'];
+const kb=document.getElementById('kb');
+rows.forEach((r,idx)=>{
+  const rowEl=document.createElement('div'); rowEl.className='kb-row';
+  if(idx===2){
+    const ent=document.createElement('button'); ent.className='key wide enter'; ent.textContent='enter';
+    onTap(ent,submit); rowEl.appendChild(ent);
+  }
+  for(const ch of r){
+    const k=document.createElement('button'); k.className='key'; k.textContent=ch;
+    onTap(k,()=>pressLetter(ch)); rowEl.appendChild(k);
+  }
+  if(idx===2){
+    const del=document.createElement('button'); del.className='key wide'; del.textContent='⌫';
+    onTap(del,backspace); rowEl.appendChild(del);
+  }
+  kb.appendChild(rowEl);
+});
+// physical keyboard support
+window.addEventListener('keydown',e=>{
+  if(document.getElementById('welcome').classList.contains('hidden')===false)return;
+  if(e.key==='Enter')submit();
+  else if(e.key==='Backspace')backspace();
+  else if(/^[a-zA-Z]$/.test(e.key))pressLetter(e.key.toLowerCase());
+});
+
+function onTap(el,fn){let h=false;const run=e=>{if(h)return;h=true;setTimeout(()=>h=false,200);if(e&&e.cancelable)e.preventDefault();fn(e);};el.addEventListener('pointerup',run);el.addEventListener('click',run);}
+
+// welcome demo tiles: T Y P with sample heats
+(function(){
+  const demo=document.getElementById('wDemo');
+  const sample=[['t','exact'],['y','hot'],['p','warm']];
+  sample.forEach(([ch,cls])=>{const t=document.createElement('div');t.className='tile '+cls;t.textContent=ch;demo.appendChild(t);});
+})();
+onTap(document.getElementById('wPlay'),()=>document.getElementById('welcome').classList.add('hidden'));
+onTap(document.getElementById('endNext'),newGame);
+
+newGame();
+</script>
+</body>
+</html>
