@@ -276,7 +276,15 @@ function submit(){
     t.className='tile filled'; t.textContent=guess[c];
   }
   const gb=document.getElementById('gb'+row); gb.classList.remove('ready'); gb.disabled=true; gb.style.visibility='hidden';
-  const bands=[0,1,2].map(c=>locked.has(c)?3:band(secret,guess,c,locked));
+  // First determine which positions are exact (green) THIS row, and set them aside before scoring the rest,
+  // so a letter found green can't simultaneously radiate warmth onto its siblings.
+  const effLocked=new Set(locked);
+  for(let c=0;c<3;c++){ if(!effLocked.has(c) && guess[c]===secret[c]) effLocked.add(c); }
+  const bands=[0,1,2].map(c=>{
+    if(locked.has(c)) return 3;                 // already locked from a previous row
+    if(guess[c]===secret[c]) return 3;          // exact this row
+    return band(secret,guess,c,effLocked);      // scored against unsolved letters only
+  });
   for(let c=0;c<3;c++){
     const t=document.getElementById('t'+row+c);
     setTimeout(()=>{ t.classList.add('reveal'); setTimeout(()=>{ t.classList.add(BANDCLASS[bands[c]]); if(bands[c]===3)t.classList.add('locked'); },250); }, c*180);
